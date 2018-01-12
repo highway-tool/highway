@@ -9,10 +9,10 @@ import POSIX
     ├── _highway/
     │   ├── .gitignore
     │   ├── .build/
+    │   ├── .project_description.json
     │   ├── Package.resolved
     │   ├── Package.swift
     │   ├── config.xcconfig
-    │   ├── project_description.json
     │   └── main.swift
     ├── _highway.xcodeproj/
     └── your app.xcodeproj/
@@ -43,15 +43,43 @@ public final class HighwayBundle {
     public var xcodeprojectUrl: Absolute {
         return url.parent.appending(configuration.xcodeprojectName)
     }
-    // MARK: - Working with the Bundle
+    
+    // MARK: - Writing
     public func write(xcconfigData data: Data) throws {
         try fileSystem.writeData(data, to: xcconfigFileUrl)
     }
-
+    
     public func write(gitignore data: Data) throws {
         try fileSystem.writeData(data, to: url.appending(configuration.gitignoreName))
     }
-
+    
+    public func write(mainSwiftData data: Data) throws {
+        try fileSystem.writeData(data, to: mainSwiftFileUrl)
+    }
+    
+    public func write(packageDescription data: Data) throws {
+        try fileSystem.writeData(data, to: packageFileUrl)
+    }
+    
+    public func write(projectDescription: ProjectDescription) throws {
+        let data = try JSONEncoder().encode(projectDescription)
+        try fileSystem.writeData(data, to: projectDescriptionUrl)
+    }
+    
+    // MARK: - Deleting
+    public func deletePinsFileIfPresent() throws -> Absolute? {
+        return try fileSystem.delete(file: pinsFileUrl)
+    }
+    
+    public func deleteBuildDirectoryIfPresent() throws -> Absolute? {
+        return try fileSystem.delete(directory: buildDirectory)
+    }
+    
+    public func deleteProjectDescriptionIfPresent() throws -> Absolute? {
+        return try fileSystem.delete(file: projectDescriptionUrl)
+    }
+    
+    // MARK: - Working with the Bundle
     public var gitignoreFileUrl: Absolute {
         return url.appending(configuration.gitignoreName)
     }
@@ -68,55 +96,32 @@ public final class HighwayBundle {
         return url.appending(configuration.mainSwiftFileName)
     }
 
-    public func write(mainSwiftData data: Data) throws {
-        try fileSystem.writeData(data, to: mainSwiftFileUrl)
-    }
-
     public var packageFileUrl: Absolute {
         return url.appending(configuration.packageSwiftFileName)
-    }
-
-    public func write(packageDescription data: Data) throws {
-        try fileSystem.writeData(data, to: packageFileUrl)
     }
 
     private var pinsFileUrl: Absolute {
         return url.appending(configuration.pinsFileName)
     }
 
-    public func deletePinsFileIfPresent() throws -> Absolute? {
-        return try fileSystem.withExistingFile(at: pinsFileUrl, defaultValue: nil) { (fs, file) -> Absolute in
-            try fs.deleteItem(at: pinsFileUrl)
-            return pinsFileUrl
-        }
-    }
-
     public var buildDirectory: Absolute {
         return url.appending(configuration.buildDirectoryName)
     }
-
-    public func deleteBuildDirectoryIfPresent() throws -> Absolute? {
-        return try fileSystem.withExistingDirectory(at: buildDirectory, defaultValue: nil) { (fs, dir)  in
-            try fs.deleteItem(at: buildDirectory)
-            return buildDirectory
-        }
-    }
-
+    
+    // MARK: - Cleaning
     public struct CleanResult {
         public let deletedFiles: [Absolute]
     }
+    
     /// Removes build artifacts and calculateable information from the
     /// highway bundle = the folder that contains your custom "highfile".
     public func clean() throws -> CleanResult {
-        var deletedFiles = [Absolute]()
-        if let pinsFile = try deletePinsFileIfPresent() {
-            deletedFiles.append(pinsFile)
-        }
-
-        if let buildDirectory = try deleteBuildDirectoryIfPresent() {
-            deletedFiles.append(buildDirectory)
-        }
-        return CleanResult(deletedFiles: deletedFiles)
+        return CleanResult(deletedFiles:
+            [
+                try deletePinsFileIfPresent(),
+                try deleteBuildDirectoryIfPresent(),
+                try deleteProjectDescriptionIfPresent()
+            ].flatMap { $0 } )
     }
 
     public func executableUrl(swiftBinUrl: Absolute) -> Absolute {
@@ -132,6 +137,7 @@ extension HighwayBundle {
             config.branch = env("HIGHWAY_BUNDLE_BRANCH", defaultValue: "master")
             return config
         }()
+        
         // MARK: - Properties
         public var mainSwiftFileName = "main.swift"
         public var packageSwiftFileName = "Package.swift"
@@ -144,7 +150,7 @@ extension HighwayBundle {
         // MARK: - Properties / Convenience
         public var xcconfigName = "config.xcconfig"
         public var gitignoreName = ".gitignore"
-        public var projectDescriptionName = "project_description.json"
+        public var projectDescriptionName = ".project_description.json"
         // MARK: - Private Stuff
         public var branch = "master"
     }

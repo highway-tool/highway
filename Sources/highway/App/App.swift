@@ -12,6 +12,12 @@ enum AppHighway: String {
     case initialize, help, generate, bootstrap, clean, version, self_update
 }
 
+func getPassword(for user: String) -> String? {
+    let buf = [Int8](repeating: 0, count: 8192)
+    guard let passwordData = readpassphrase("Password for '\(user)' (<enter> to continue): ", (UnsafeMutablePointer<Int8>)(mutating: buf), buf.count, 0) else { return nil }
+    return String(validatingUTF8: passwordData)
+}
+
 final class App: Highway<AppHighway> {
     // MARK: Highway Overrides
     override func setupHighways() {
@@ -30,16 +36,30 @@ final class App: Highway<AppHighway> {
     // MARK: - Running highway
     override func didFinishLaunching(with invocation: Invocation) {
         ui.verbosePrint(Diagnostics(version: CurrentVersion, system: system))
+        
+        // Before anything happens try to ensure the credentials are okay.
+        if let user = __projectDescription()?.credentials?.user {
+            credentialStore.setUser(user)
+            if credentialStore.password() == nil {
+                ui.important("Your highway project seems to need credentials for '\(user)' but ")
+                ui.important("no keychain item could be found for that user. Please enter a password/")
+                ui.important("secret for '\(user)' and hit enter. highway will automatically create the")
+                ui.important("corresponding keychain item for you. This has to be done only once.")
+                if let pw = getPassword(for: user) {
+                    try? credentialStore.setPassword(pw)
+                }
+            }
+        }
     }
     
     // MARK: - Private Highways
     private func __customHighways() -> [HighwayDescription] {
         // Try to get the bundle
         // if the are not able to get it just show the help.
-        guard let bundle = __currentHighwayBundle() else {
+        guard let tool = try? __highwayProjectTool() else {
             return []
         }
-        return (HighwayProjectTool(compiler: swift, bundle: bundle, system: system, fileSystem: fileSystem, verbose: verbose, ui: ui).availableHighways())
+        return tool.availableHighways()
     }
     
     @discardableResult
@@ -52,6 +72,23 @@ final class App: Highway<AppHighway> {
     }
     
     // MARK: - Helper
+    private func __highwayProjectTool() throws -> HighwayProjectTool {
+        guard let bundle = __currentHighwayBundle() else {
+            throw "Failed to get highway bundle."
+        }
+        
+        return HighwayProjectTool(compiler: swift,
+                                  bundle: bundle,
+                                  system: system,
+                                  fileSystem: fileSystem,
+                                  verbose: verbose,
+                                  ui: ui)
+
+    }
+    private func __projectDescription() -> ProjectDescription? {
+        return try? __highwayProjectTool().projectDescription()
+    }
+
     private func __currentHighwayBundle() -> HighwayBundle? {
         let parentUrl = abscwd()
         return try? HighwayBundle(fileSystem: fileSystem,

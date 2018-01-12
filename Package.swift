@@ -40,7 +40,7 @@ let package = Package(
         )
     ],
     targets: [
-        .target(name: "HighwayProject", dependencies: ["Keychain", "HWKit", "SwiftTool", "Git", "POSIX", "Deliver", "HighwayCore", "Terminal", "FileSystem", "XCBuild", "Url", "Task"], path: "./Sources/HighwayProject"),
+        .target(name: "HighwayProject", dependencies: ["Keychain", "Keychain", "HWKit", "SwiftTool", "Git", "POSIX", "Deliver", "HighwayCore", "Terminal", "FileSystem", "XCBuild", "Url", "Task"], path: "./Sources/HighwayProject"),
         
         // Task: We use the security command line tool to talk to the Keychain.
         // Arguments: Task => Arguments

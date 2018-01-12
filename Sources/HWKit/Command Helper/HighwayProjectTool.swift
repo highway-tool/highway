@@ -39,18 +39,18 @@ public class HighwayProjectTool {
     }
     
     // MARK: - Working with the Tool
+    public func projectDescription() throws -> ProjectDescription {
+        try build(thenExecuteWith: [])
+        let url = bundle.projectDescriptionUrl
+        ui.verbose("Reading project description: \(url)")
+        let data = try fileSystem.data(at: url)
+        let result = try JSONDecoder().decode(ProjectDescription.self, from: data)
+        ui.verbose("Project description: \(try result.jsonString())")
+        return result
+    }
+    
     public func availableHighways() -> [HighwayDescription] {
-        do {
-            try build(thenExecuteWith: [])
-            let url = bundle.projectDescriptionUrl
-            ui.verbose("Reading project description: \(url)")
-            let data = try fileSystem.data(at: url)
-            let result = (try? Array(rawHighwaysData: data)) ?? []
-            ui.verbose("Project description: \(try result.jsonString())")
-            return result
-        } catch {
-            return []
-        }
+        return (try? projectDescription().highways) ?? []
     }
 
     public func update() throws {
@@ -75,11 +75,8 @@ public class HighwayProjectTool {
             arguments = Arguments(["--verbose"]) + arguments
         }
         let _highway = Task(executableUrl: executableUrl, arguments: arguments, currentDirectoryUrl: bundle.url.parent)
+        _highway.output = .standardOutput()
         ui.verbose("Launching: \(_highway)")
-
-        if verbose == false {
-            _highway.enableReadableOutputDataCapturing()
-        }
 
         try system.execute(_highway).assertSuccess()
         

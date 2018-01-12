@@ -4,7 +4,7 @@ locs=$(( find ./ -name '*.swift' -print0 | xargs -0 cat ) | wc -l)
 cd ../Tests
 locs_test=$(( find ./ -not -path '*/\.*' -name '*.swift' -print0 | xargs -0 cat ) | wc -l)
 
-DATE=`date '+%Y-%m-%d %H:%M:%S'`
+DATE=`date '+%Y-%m-%d'`
 echo "${DATE}                ${locs}                ${locs_test}" >> ./../scripts/loc_over_time.text
 
 cat ./../scripts/loc_over_time.text

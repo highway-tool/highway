@@ -58,11 +58,11 @@ open class Highway<T: RawRepresentable>: _Highway<T> where T.RawValue == String 
     }()
     
     public lazy var keychain: Keychain = {
-        return Keychain(system: system)
+        return LocalKeychain(system: system)
     }()
 
-    public lazy var deliver: _Deliver = {
-        return Deliver.Local(altool: Altool(system: system, fileSystem: fileSystem))
+    public lazy var deliver: Deliver = {
+        return Local(altool: Altool(system: system, fileSystem: fileSystem))
     }()
     
     public lazy var xcbuild: XCBuild = {
@@ -73,20 +73,29 @@ open class Highway<T: RawRepresentable>: _Highway<T> where T.RawValue == String 
         return _SwiftTool(system: system, ui: ui)
     }()
     
+    public lazy var credentialStore: CredentialStore = {
+        let store = LocalCredentialStore(keychain: keychain)
+        if let user = defaultUser() {
+            store.setUser(user)
+        }
+        return store
+    }()
+    
     // MARK: - _Highway
     open override func didFinishLaunching(with invocation: Invocation) {
         ui.verbosePrint(Diagnostics(version: nil, system: system))
-        
         super.didFinishLaunching(with: invocation)
         do {
-            let text = try descriptions.jsonString()
-            let config = HighwayBundle.Configuration.standard
-            let url = cwd.appending(config.directoryName).appending(config.projectDescriptionName)
-            try fileSystem.writeString(text, to: url)
+            let bundle = try HighwayBundle(fileSystem: fileSystem, parentUrl: cwd, configuration: .standard)
+            let credentials: ProjectDescription.Credentials? = defaultUser().flatMap { ProjectDescription.Credentials(user: $0) }
+            let projectDescription = ProjectDescription(highways: descriptions, credentials: credentials)
+            try bundle.write(projectDescription: projectDescription)
         } catch {
             ui.error(error.localizedDescription)
         }
     }
+    
+    open func defaultUser() -> String? { return nil }
     
     // MARK: - Convenience
     public func hw_build() throws {
@@ -97,13 +106,13 @@ open class Highway<T: RawRepresentable>: _Highway<T> where T.RawValue == String 
         try xcbuild.build(using: xcsettings.build, executeTests: true)
     }
     
-    public func hw_deliver(platform: Deliver.Platform = .iOS) throws {
+    public func hw_deliver(platform: Platform = .iOS) throws {
         // Validate xcsettings
         let user = try xcsettings.credentials.user.failIfNil("Failed to deliver product: User not set. You can set a user by setting xcsettings.credentials.user.")
         let password = try xcsettings.credentials.password.failIfNil("Failed to deliver product: Password not set. You can set a password by setting xcsettings.credentials.password.")
         
         let export = try hw_export()
-        let options = Deliver.Options(ipaUrl: export.ipaUrl, username: user, password: .plain(password), platform: platform)
+        let options = Options(ipaUrl: export.ipaUrl, username: user, password: .plain(password), platform: platform)
         try deliver.now(with: options)
     }
     
@@ -147,7 +156,12 @@ open class Highway<T: RawRepresentable>: _Highway<T> where T.RawValue == String 
         try xcbuild.incrementBuildNumber(project: project, scheme: scheme)
     }
     
-    public let xcsettings = XCSettings()
+    public lazy var xcsettings: XCSettings = {
+        let settings = XCSettings()
+        settings.credentials.user = defaultUser()
+        settings.credentials.password = credentialStore.password()
+        return settings
+    }()
 }
 
 infix operator <-> : AssignIfNilPrecedence

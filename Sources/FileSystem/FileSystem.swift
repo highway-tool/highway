@@ -17,6 +17,12 @@ public protocol FileSystem: class {
     func directoryContents(at url: Absolute) throws -> [Absolute]
     
     // MARK: - Convenience
+    @discardableResult
+    func delete(file: Absolute) throws -> Absolute?
+
+    @discardableResult
+    func delete(directory: Absolute) throws -> Absolute?
+
     func directory(at url: Absolute) -> Directory
     func file(at url: Absolute) -> File
     func stringContentsOfFile(at url: Absolute) throws -> String
@@ -44,19 +50,38 @@ extension FileSystem {
         }
         try writeData(data, to: url)
     }
+    
     // Convenience
+    @discardableResult
+    public func delete(file url: Absolute) throws -> Absolute? {
+        guard file(at: url).isExistingFile else { return nil }
+        try deleteItem(at: url)
+        return url
+    }
+    
+    @discardableResult
+    public func delete(directory url: Absolute) throws -> Absolute? {
+        guard directory(at: url).isExistingDirectory else { return nil }
+        try deleteItem(at: url)
+        return url
+    }
+    
     public func file(at url: Absolute) -> File {
         return File(url: url, fileSystem: self)
     }
+    
     public func directory(at url: Absolute) -> Directory {
         return Directory(url: url, in: self)
     }
+    
     public func stringContentsOfFile(at url: Absolute) throws -> String {
         return try file(at: url).string()
     }
+    
     public func dataContentsOfFile(at url: Absolute) throws -> Data {
         return try file(at: url).data()
     }
+    
     public func assertItem(at url: Absolute, is itemType: Metadata.ItemType) throws {
         let meta = try itemMetadata(at: url)
         let actualType = meta.type
@@ -66,6 +91,7 @@ extension FileSystem {
         default: throw FSError.typeMismatch
         }
     }
+    
     public func uniqueTemporaryDirectoryUrl() throws -> Absolute {
         let tmp = try temporaryDirectoryUrl()
         let unique = tmp.appending(UUID().uuidString)

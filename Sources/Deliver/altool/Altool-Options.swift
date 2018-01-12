@@ -60,18 +60,16 @@ extension Altool.Options {
 }
 
 extension Altool.Options {
-    public typealias Platform = Deliver.Platform
 }
 
-extension Deliver.Platform {
+extension Platform {
     fileprivate var arguments: Arguments { return ["--type", rawValue] }
 }
 
 extension Altool.Options {
-    public typealias Password = Deliver.Password
 }
 
-extension Deliver.Password {
+extension Password {
     // MARK: - Properties
     private var passwordArgument: String {
         switch self {

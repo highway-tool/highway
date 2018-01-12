@@ -43,7 +43,7 @@ Table of Contents
 * [Updating](#updating)
   * [Dependencies](#dependencies)
   * [CLI](#cli)
-  
+
 ---
 
 # <a name="getting-started" />Getting started
@@ -55,7 +55,7 @@ Simply paste the following command into a terminal of your choice.
 
 ```
 pushd $(mktemp -d -t highway) && \
-git clone -b master https://github.com/ChristianKienle/highway.git highway && \
+git clone -b master https://github.com/highway-tool/highway.git highway && \
 ./highway/scripts/bootstrap.sh --interactive && popd
 ```
 

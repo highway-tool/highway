@@ -8,43 +8,33 @@ import HighwayProject
 import Deliver
 import Foundation
 
-enum Way: String {
-    case test, build, run
-    var usage: String {
-        switch self {
-        case .build: return "Builds the project"
-        case .test: return "Executes tests"
-        case .run: return "Runs the project"
-        }
-    }
-}
+enum Way: String { case test, build, run }
 
-class App: Highway<Way> {
+final class App: Highway<Way> {
+    // MARK: - Setup
     override func setupHighways() {
-        self[.build] ==> build
-        self[.test] ==> test
-        self[.run] ==> run
+        highway(.build, "Builds the project") ==> build
+        highway(.test, "Executes tests") ==> test
+        highway(.run, "Runs the project") ==> run
     }
 
     // MARK: - Highways
-    func build() {
 
-    }
+    // $ highway build
+    func build() throws { /* intentionally left blank */ }
 
+    // $ highway run
+    func run() throws { /* intentionally left blank */ }
+
+    // $ highway test
     func test() throws {
-        var options = TestOptions()
+        var options = BuildOptions()
         options.project = "<insert path to *.xcproject here>"
         options.scheme = "<insert name of scheme here>"
         options.destination = Destination.simulator(.iOS, name: "iPhone 7", os: .latest, id: nil)
-        try xcbuild.buildAndTest(using: options)
-    }
-
-    func run() {
-
+        try xcbuild.build(using: options, executeTests: true)
     }
 }
 
 App(Way.self).go()
-
-
 """

@@ -62,13 +62,13 @@ final class XCBuildTests: XCTestCase {
     var credentials: Credentials = Credentials(username: "", password: "")
     struct Credentials { let username: String; let password: String }
     private func retrieveCredentials() throws -> Credentials {
-        let keychain = Keychain(system: LocalSystem.local())
+        let keychain = LocalKeychain(system: LocalSystem.local())
         do {
-            let password = try keychain.password(matching: .init(account: "HIGHWAY_DELIVER_PASSWORD", service: "HIGHWAY_DELIVER_PASSWORD"))
-            let username = try keychain.password(matching: .init(account: "HIGHWAY_DELIVER_USERNAME", service: "HIGHWAY_DELIVER_USERNAME"))
+            let password = try keychain.passwordFor(account: "highway.deliver.test.password", server: "highway.deliver.test.password")
+            let username = try keychain.passwordFor(account: "highway.deliver.test.user", server: "highway.deliver.test.user")
             return Credentials(username: username, password: password)
         } catch {
-            XCTFail("Failed to get username/password from the Keychain. To resolve this issue disable the system tests (default) or create two Keychain items: HIGHWAY_DELIVER_PASSWORD and HIGHWAY_DELIVER_USERNAME.")
+            XCTFail("Failed to get username/password from the Keychain. To resolve this issue disable the system tests (default) or create two Keychain items: http://highway.deliver.test.user and http://highway.deliver.test.password.")
             XCTFail(error.localizedDescription)
             throw error
         }
@@ -120,8 +120,8 @@ final class XCBuildTests: XCTestCase {
         exportArchiveOptions.exportOptionsPlist = plist
         let export = try build.export(using: exportArchiveOptions)
         print("ipaUrl: \(export.ipaUrl)")
-        let deliver = Deliver.Local(altool: Altool(system: system, fileSystem: fs))
-        try deliver.now(with: Deliver.Options(ipaUrl: export.ipaUrl, username: credentials.username, password: .plain(credentials.password), platform: .iOS))
+        let deliver = Local(altool: Altool(system: system, fileSystem: fs))
+        try deliver.now(with: Options(ipaUrl: export.ipaUrl, username: credentials.username, password: .plain(credentials.password), platform: .iOS))
         print("DONE")
     }
     
@@ -152,8 +152,8 @@ final class XCBuildTests: XCTestCase {
         
         let export = try build.export(using: exportArchiveOptions)
         print("ipaUrl: \(export.ipaUrl)")
-        let deliver = Deliver.Local(altool: Altool(system: system, fileSystem: fs))
-        try deliver.now(with: Deliver.Options(ipaUrl: export.ipaUrl, username: credentials.username, password: .plain(credentials.password), platform: .iOS))
+        let deliver = Local(altool: Altool(system: system, fileSystem: fs))
+        try deliver.now(with: Options(ipaUrl: export.ipaUrl, username: credentials.username, password: .plain(credentials.password), platform: .iOS))
         print("DONE")
     }
 }

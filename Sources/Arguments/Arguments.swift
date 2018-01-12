@@ -71,7 +71,11 @@ public struct Arguments {
     }
     
     public init(arguments: [Argument]) {
-        self.all = arguments
+        append(contentsOf: arguments)
+    }
+    
+    public init(argument: Argument) {
+        append(contentsOf: [argument])
     }
     
     public init(argumentsArray: [Arguments]) {
@@ -122,6 +126,13 @@ public struct Arguments {
         all += arguments.all
     }
     
+    public mutating func append(argument: Argument) {
+        append(Arguments(argument: argument))
+    }
+    public mutating func append(contentsOf args: [Argument]) {
+        all += args
+    }
+    
     public mutating func append(_ option: ArgumentsConvertible) {
         guard let args = option.arguments() else { return }
         append(args)
@@ -136,6 +147,10 @@ public struct Arguments {
         result.append(rhs)
         lhs = result
     }
+    static public func +=(lhs: inout Arguments, rhs: Argument) {
+        lhs.append(argument: rhs)
+    }
+
     static public func +=(lhs: inout Arguments, rhs: String) {
         var result = lhs
         result.append(rhs)

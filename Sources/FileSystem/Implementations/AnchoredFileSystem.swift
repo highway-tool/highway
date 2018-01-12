@@ -62,12 +62,15 @@ extension AnchoredFileSystem: FileSystem {
     public func file(at url: Absolute) -> File {
         return File(url: url, fileSystem: self)
     }
+    
     public func directory(at url: Absolute) -> Directory {
         return Directory(url: url, in: self)
     }
+    
     public func stringContentsOfFile(at url: Absolute) throws -> String {
         return try file(at: _completeUrl(url)).string()
     }
+    
     public func dataContentsOfFile(at url: Absolute) throws -> Data {
         return try file(at: _completeUrl(url)).data()
     }
