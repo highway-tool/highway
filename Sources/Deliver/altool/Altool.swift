@@ -2,7 +2,7 @@ import Url
 import Arguments
 import Task
 import FileSystem
-import Result
+import enum Result.Result
 import Errors
 
 public class Altool {

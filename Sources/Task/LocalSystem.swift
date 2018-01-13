@@ -1,6 +1,6 @@
 import Foundation
 import FileSystem
-import Result
+import enum Result.Result
 import Terminal
 
 public final class LocalSystem {

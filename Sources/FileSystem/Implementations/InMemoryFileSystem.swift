@@ -5,81 +5,113 @@ typealias Node = InMemoryFileSystem.Node
 typealias DirectoryContents = InMemoryFileSystem.Node.DirectoryContents
 
 public final class InMemoryFileSystem: FileSystem {
-    public func directoryContents(at url: Absolute) throws -> [Absolute] {
-        guard let node = try getNode(url) else {
-            throw FSError.doesNotExist
+    public func directoryContentsResult(at url: Absolute) -> DirectoryResult {
+        do {
+            guard let node = try getNode(url) else {
+                return .failure(.doesNotExist)
+            }
+            guard let dir = node.contents.directoryContents else {
+                return .failure(.doesNotExist)
+            }
+            return .success(dir.entries.keys.map { url.appending($0) })
+        } catch {
+            return .failure(.other(error))
         }
-        guard let dir = node.contents.directoryContents else {
-            throw FSError.doesNotExist
-        }
-        return dir.entries.keys.map { url.appending($0) }
     }
     
-    public func itemMetadata(at url: Absolute) throws -> Metadata {
-        guard try nodeExists(at: url) else {
-            throw FSError.doesNotExist
-        }
-        guard let node = try getNode(url) else {
-            throw FSError.doesNotExist
+    public func itemMetadataResult(at url: Absolute) -> MetadataResult {
+        do {
+            guard try nodeExists(at: url) else {
+                return .failure(.doesNotExist)
+            }
+            
+            guard let node = try getNode(url) else {
+                return .failure(.doesNotExist)
+            }
+            
+            switch node.contents {
+            case .file(_):
+                return .success(.file)
+            case .directory(_):
+                return .success(.directory)
+            }
+        } catch {
+            return .failure(.other(error))
         }
         
-        switch node.contents {
-        case .file(_):
-            return Metadata(type: .file)
-        case .directory(_):
-            return Metadata(type: .directory)
+    }
+    
+    public func deleteItemResult(at url: Absolute) -> AbsoluteResult {
+        do {
+            let parentUrl = url.parent
+            guard let parentNode = try getNode(parentUrl) else {
+                return .failure(.doesNotExist)
+            }
+            parentNode[url.lastPathComponent] = nil
+            return .success(url)
+        } catch {
+            return .failure(.other(error))
         }
     }
     
-    public func deleteItem(at url: Absolute) throws {
-        let parentUrl = url.parent
-        guard let parentNode = try getNode(parentUrl) else {
-            throw FSError.doesNotExist
-        }
-        parentNode[url.lastPathComponent] = nil
+    public func homeDirectoryUrlResult() -> AbsoluteResult {
+        return AbsoluteResult(homeDirectoryUrlOverride)
     }
     
-    public func homeDirectoryUrl() throws -> Absolute {
-        return homeDirectoryUrlOverride
+    public func temporaryDirectoryUrlResult() -> AbsoluteResult {
+        return AbsoluteResult(temporaryDirectoryUrlOverride)
     }
     
-    public func temporaryDirectoryUrl() throws -> Absolute {
-        return temporaryDirectoryUrlOverride
-    }
-    
-    public func createDirectory(at url: Absolute) throws {
+    @discardableResult
+    public func createDirectoryResult(at url: Absolute) -> AbsoluteResult {
         let urlsToUrl:[Absolute] = [.root] + url.urlsFromRootToSelf.remainingUrls
         for directoryURL in urlsToUrl {
+            do {
             if try nodeExists(at: directoryURL) == true {
                 continue
             }
             let currentParentURL = directoryURL.parent
-            guard let currentParent = try getNode(currentParentURL) else {
-                throw FSError.doesNotExist
+                guard let currentParent = try getNode(currentParentURL) else {
+                    return AbsoluteResult(.doesNotExist)
+                }
+                currentParent[directoryURL.lastPathComponent] = .directory()
+            } catch {
+                return AbsoluteResult(.doesNotExist)
             }
-            currentParent[directoryURL.lastPathComponent] = .directory()
+        }
+        return AbsoluteResult(url)
+    }
+    
+    @discardableResult
+    public func writeDataResult(_ data: Data, to url: Absolute) -> AbsoluteResult {
+        do {
+            let tailURL = url.parent
+            guard let node = try getNode(tailURL) else {
+                return AbsoluteResult(.other("write to file failed because it has no parent."))
+            }
+            node[url.lastPathComponent] = .file(String(data: data, encoding: .utf8)!)
+            return AbsoluteResult(url)
+        } catch {
+            return AbsoluteResult(.other(error))
         }
     }
     
-    public func writeData(_ data: Data, to url: Absolute) throws {
-        let tailURL = url.parent
-        guard let node = try getNode(tailURL) else {
-            throw "write to file failed because it has no parent."
+    public func dataResult(at url: Absolute) -> DataResult {
+        do {
+            guard let node = try getNode(url) else {
+                return .failure(.doesNotExist)
+            }
+            guard let string = node.contents.fileContents else {
+                return .failure(.doesNotExist)
+            }
+            guard let contents = string.data(using: .utf8) else {
+                return .failure(.other("File '\(url)': Has content but conversion to Data failed."))
+            }
+            return DataResult(contents)
+        } catch {
+            return .failure(.other(error))
         }
-        node[url.lastPathComponent] = .file(String(data: data, encoding: .utf8)!)
-    }
-    
-    public func data(at url: Absolute) throws -> Data {
-        guard let node = try getNode(url) else {
-            throw FSError.doesNotExist
-        }
-        guard let string = node.contents.fileContents else {
-            throw FSError.doesNotExist
-        }
-        guard let contents = string.data(using: .utf8) else {
-            throw FSError.other("File '\(url)': Has content but conversion to Data failed.")
-        }
-        return contents
+        
     }
     
     // MARK: - Properties
@@ -110,7 +142,7 @@ public final class InMemoryFileSystem: FileSystem {
         let contents = currentNode.contents
         switch contents {
         case .file(_):
-            throw FSError.doesNotExist
+            throw Error.doesNotExist
         case .directory(let dir):
             guard let entry = dir.entries[head.lastPathComponent] else {
                 return nil

@@ -99,24 +99,8 @@ extension Absolute {
     }
 }
 
-// MARK: - FileManager Support for Absolute, so that we do not have to expose a URL.
-public extension FileManager {
-    public func removeItem(atAbsolute url: Absolute) throws {
-        try removeItem(at: url.url)
-    }
-    public func createDirectory(atAbsolute url: Absolute, withIntermediateDirectories createIntermediates: Bool) throws {
-        try createDirectory(at: url.url, withIntermediateDirectories: createIntermediates, attributes: nil)
-    }
-}
 
-public extension Data {
-    public func write(toAbsolute url: Absolute) throws {
-        try write(to: url.url)
-    }
-    public init(contentsOfAbsolute url: Absolute) throws {
-        try self.init(contentsOf: url.url)
-    }
-}
+
 public extension String {
     public var isAbsolutePath: Bool { return hasPrefix("/") }
 }

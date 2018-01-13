@@ -7,7 +7,7 @@ public final class HomeBundle {
     // MARK: - Init
     public init(url: Absolute, fileSystem fs: FileSystem, configuration: Configuration = .standard) throws {
         do {
-            guard try fs.itemMetadata(at: url).type == .directory else {
+            guard try fs.itemMetadata(at: url) == .directory else {
                 throw "Highway home directory does not exist at \(url.path)."
             }
         } catch {
@@ -34,7 +34,7 @@ public final class HomeBundle {
             let expectation = component.fsRequirement
             let isMissing: Bool
             do {
-                let componentValid = try self.fileSystem.itemMetadata(at: componentUrl).type == expectation
+                let componentValid = try self.fileSystem.itemMetadata(at: componentUrl) == expectation
                 isMissing = !componentValid
             } catch {
                 isMissing = true
@@ -51,7 +51,7 @@ extension HomeBundle {
         case binDir = "bin"
         case highwayCLI = "bin/highway"
         case clone = "highway"
-        var fsRequirement: Metadata.ItemType {
+        var fsRequirement: Metadata {
             switch self {
             case .binDir, .clone:
                 return .directory

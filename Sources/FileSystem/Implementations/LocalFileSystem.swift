@@ -2,9 +2,16 @@ import Foundation
 import Url
 
 public class LocalFileSystem: FileSystem {
-    public func directoryContents(at url: Absolute) throws -> [Absolute] {
-        let urls = try _fm.contentsOfDirectory(at: url.url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles, .skipsPackageDescendants, .skipsSubdirectoryDescendants])
-        return urls.map { Absolute($0) }
+    public func directoryContentsResult(at url: Absolute) -> DirectoryResult {
+        let options: FileManager.DirectoryEnumerationOptions = [.skipsHiddenFiles, .skipsPackageDescendants, .skipsSubdirectoryDescendants]
+        do {
+            let urls = try _fm.contentsOfDirectory(at: url.url,
+                                                   includingPropertiesForKeys: nil,
+                                                   options: options)
+            return .success(urls.map { Absolute($0) })
+        } catch {
+            return .failure(error.asFSError)
+        }
     }
     
     // MARK: - Init
@@ -14,60 +21,94 @@ public class LocalFileSystem: FileSystem {
     private let _fm = FileManager()
 
     // MARK: - FileSystem
-    public func homeDirectoryUrl() throws -> Absolute {
-        return Absolute(NSHomeDirectory())
+    public func homeDirectoryUrlResult() -> AbsoluteResult {
+        return AbsoluteResult(Absolute(NSHomeDirectory()))
     }
     
-    public func temporaryDirectoryUrl() throws -> Absolute {
-        return Absolute(NSTemporaryDirectory())
+    public func temporaryDirectoryUrlResult() -> AbsoluteResult {
+        return AbsoluteResult(Absolute(NSTemporaryDirectory()))
     }
     
-    public func deleteItem(at url: Absolute) throws {
-        try _withItem(at: url) {
-            try _fm.removeItem(atAbsolute: url)
-        }
+    @discardableResult
+    public func deleteItemResult(at url: Absolute) -> AbsoluteResult {
+        return _fm.removeItem(at: url)
     }
     
-    public func createDirectory(at url: Absolute) throws {
-        try _withItem(at: url) {
+    @discardableResult
+    public func createDirectoryResult(at url: Absolute) -> AbsoluteResult {
+        do {
             try _fm.createDirectory(atAbsolute: url, withIntermediateDirectories: true)
+            return AbsoluteResult(url)
+        } catch {
+            return AbsoluteResult(error.asFSError)
         }
     }
 
-    public func writeData(_ data: Data, to url: Absolute) throws {
-        try _withItem(at: url) {
-            try data.write(toAbsolute: url)
-        }
+    @discardableResult
+    public func writeDataResult(_ data: Data, to url: Absolute) -> AbsoluteResult {
+        return data.write(to: url)
     }
     
-    public func data(at url: Absolute) throws -> Data {
-        return try _withItem(at: url) {
-            return try Data(contentsOfAbsolute: url)
-        }
+    public func dataResult(at url: Absolute) -> DataResult {
+        return Data.data(contentsOf: url)
     }
     
-    public func itemMetadata(at url: Absolute) throws -> Metadata {
+    public func itemMetadataResult(at url: Absolute) -> MetadataResult {
         var isDir = ObjCBool(false)
         guard _fm.fileExists(atPath: url.path, isDirectory: &isDir) else {
-            throw FSError.doesNotExist
+            return .failure(.doesNotExist)
         }
-        let type: Metadata.ItemType = isDir.boolValue ? .directory : .file
-        return Metadata(type: type)
+        return .success(isDir.boolValue ? .directory : .file)
+    }
+}
+
+extension Swift.Error {
+    var asFSError: Error {
+        guard let cocoaError = self as? CocoaError  else {
+            return .other(self)
+        }
+        
+        let notFoundCodes: Set<CocoaError.Code> = [.fileNoSuchFile, .fileReadNoSuchFile]
+        if notFoundCodes.contains(cocoaError.code) {
+            return .doesNotExist
+        }
+        return .other(self)
+    }
+}
+
+extension Data {
+    // MARK: - Init
+    static func data(contentsOf url: Absolute) -> Result<Data> {
+        do {
+            return .success(try self.init(contentsOf: url.url))
+        } catch {
+            return .failure(error.asFSError)
+        }
     }
     
-    // MARK: - Private Helper
-    typealias ItemHandler<R> = () throws -> (R)
-    // Executes handler. If handler throws any error this method automatically transforms the error
-    // to a FSError and rethrows that one.
-    private func _withItem<R>(at url: Absolute, handler: ItemHandler<R>) throws -> R {
-        let notFoundCodes: Set<CocoaError.Code> = [.fileNoSuchFile, .fileReadNoSuchFile]
+    // MARK: - Writing
+    func write(to url: Absolute) -> AbsoluteResult {
         do {
-            return try handler()
-        } catch let error as CocoaError where notFoundCodes.contains(error.code) {
-            throw FSError.doesNotExist
-        }
-        catch {
-            throw FSError.other(error)
+            try write(to: url.url)
+            return AbsoluteResult(url)
+        } catch {
+            return AbsoluteResult(error.asFSError)
         }
     }
 }
+
+// MARK: - FileManager Support for Absolute, so that we do not have to expose a URL.
+extension FileManager {
+    func removeItem(at url: Absolute) -> AbsoluteResult {
+        do {
+            try removeItem(at: url.url)
+            return AbsoluteResult(url)
+        } catch {
+            return AbsoluteResult(error.asFSError)
+        }
+    }
+    func createDirectory(atAbsolute url: Absolute, withIntermediateDirectories createIntermediates: Bool) throws {
+        try createDirectory(at: url.url, withIntermediateDirectories: createIntermediates, attributes: nil)
+    }
+}
+

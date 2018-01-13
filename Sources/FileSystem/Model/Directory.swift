@@ -6,7 +6,7 @@ public class Directory {
     let url: Absolute
     let fileSystem: FileSystem
     public var isExistingDirectory: Bool {
-        guard let type = try? fileSystem.itemMetadata(at: url).type else {
+        guard let type = try? fileSystem.itemMetadata(at: url) else {
             return false
         }
         return type == .directory

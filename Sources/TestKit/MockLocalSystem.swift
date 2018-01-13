@@ -1,6 +1,6 @@
 import Foundation
 import Task
-import Result
+import enum Result.Result
 import FileSystem
 
 public final class MockLocalSystem: System {

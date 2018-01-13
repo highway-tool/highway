@@ -19,7 +19,7 @@ public final class Plist<ObjectType: Codable> {
     }
     
     public class func plist(byReading url: Absolute, `in` fileSystem: FileSystem) throws -> Plist<ObjectType> {
-        let contents = try fileSystem.dataContentsOfFile(at: url)
+        let contents = try fileSystem.dataContents(at: url)
         let object = try PropertyListDecoder().decode(ObjectType.self, from: contents)
         return self.init(url: url, object: object)
     }

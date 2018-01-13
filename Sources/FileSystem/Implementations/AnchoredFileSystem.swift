@@ -14,46 +14,49 @@ public final class AnchoredFileSystem {
 }
 
 extension AnchoredFileSystem: FileSystem {
-    public func directoryContents(at url: Absolute) throws -> [Absolute] {
-        return try underlyingFileSystem.directoryContents(at: _completeUrl(url))
+    public func directoryContentsResult(at url: Absolute) -> DirectoryResult {
+        return underlyingFileSystem.directoryContentsResult(at: _completeUrl(url))
     }
     
-    public func assertItem(at url: Absolute, is itemType: Metadata.ItemType) throws {
+    public func assertItem(at url: Absolute, is itemType: Metadata) throws {
         let meta = try itemMetadata(at: url)
-        guard meta.type == itemType else {
-            throw FSError.typeMismatch
+        guard meta == itemType else {
+            throw Error.typeMismatch
         }
     }
-    public func itemMetadata(at url: Absolute) throws -> Metadata {
-        return try underlyingFileSystem.itemMetadata(at: _completeUrl(url))
+    public func itemMetadataResult(at url: Absolute) -> MetadataResult {
+        return underlyingFileSystem.itemMetadataResult(at: _completeUrl(url))
     }
     
-    public func homeDirectoryUrl() throws -> Absolute {
-        return try underlyingFileSystem.homeDirectoryUrl()
+    public func homeDirectoryUrlResult() -> AbsoluteResult {
+        return underlyingFileSystem.homeDirectoryUrlResult()
     }
     
-    public func temporaryDirectoryUrl() throws -> Absolute {
-        return try underlyingFileSystem.temporaryDirectoryUrl()
+    public func temporaryDirectoryUrlResult() -> AbsoluteResult {
+        return underlyingFileSystem.temporaryDirectoryUrlResult()
     }
     
-    public func createDirectory(at url: Absolute) throws {
-        try underlyingFileSystem.createDirectory(at: _completeUrl(url))
+    @discardableResult
+    public func createDirectoryResult(at url: Absolute) -> AbsoluteResult {
+        return underlyingFileSystem.createDirectoryResult(at: _completeUrl(url))
     }
     
-    public func writeData(_ data: Data, to url: Absolute) throws {
-        try underlyingFileSystem.writeData(data, to: _completeUrl(url))
+    @discardableResult
+    public func writeDataResult(_ data: Data, to url: Absolute) -> AbsoluteResult {
+        return underlyingFileSystem.writeDataResult(data, to: _completeUrl(url))
     }
     
-    public func data(at url: Absolute) throws -> Data {
-        return try underlyingFileSystem.data(at: _completeUrl(url))
+    public func dataResult(at url: Absolute) -> DataResult {
+        return underlyingFileSystem.dataResult(at: _completeUrl(url))
     }
     
-    public func deleteItem(at url: Absolute) throws {
-        try underlyingFileSystem.deleteItem(at: _completeUrl(url))
+    @discardableResult
+    public func deleteItemResult(at url: Absolute) -> AbsoluteResult {
+        return underlyingFileSystem.deleteItemResult(at: _completeUrl(url))
     }
     public func writeString(_ string: String, to url: Absolute) throws {
         guard let data = string.data(using: .utf8) else {
-            throw FSError.other("Failed to convert data to utf8 string.")
+            throw Error.other("Failed to convert data to utf8 string.")
         }
         try writeData(data, to: url)
     }
@@ -67,11 +70,11 @@ extension AnchoredFileSystem: FileSystem {
         return Directory(url: url, in: self)
     }
     
-    public func stringContentsOfFile(at url: Absolute) throws -> String {
+    public func stringContents(at url: Absolute) throws -> String {
         return try file(at: _completeUrl(url)).string()
     }
     
-    public func dataContentsOfFile(at url: Absolute) throws -> Data {
+    public func dataContents(at url: Absolute) throws -> Data {
         return try file(at: _completeUrl(url)).data()
     }
     

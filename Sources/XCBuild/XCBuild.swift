@@ -3,7 +3,7 @@ import Task
 import FileSystem
 import Url
 import Arguments
-import Result
+import enum Result.Result
 import Terminal
 
 /// Low-level Wrapper around xcodebuild. This is a starting point for additonal wrappers that do things like auto detection

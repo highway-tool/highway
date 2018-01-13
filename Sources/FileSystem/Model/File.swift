@@ -13,7 +13,7 @@ public class File {
     let url: Absolute
     let fileSystem: FileSystem
     public var isExistingFile: Bool {
-        guard let type = try? fileSystem.itemMetadata(at: url).type else {
+        guard let type = try? fileSystem.itemMetadata(at: url) else {
             return false
         }
         return type == .file
@@ -30,7 +30,7 @@ public class File {
     public func string() throws -> String {
         let data = try self.data()
         guard let result = String(data: data, encoding: .utf8) else {
-            throw FSError.other("Cannot convert contents of file \(url.description) to string.")
+            throw Error.other("Cannot convert contents of file \(url.description) to string.")
         }
         return result
     }
